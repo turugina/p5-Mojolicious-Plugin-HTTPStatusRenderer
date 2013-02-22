@@ -7,6 +7,8 @@ all_from 'lib/Mojolicious/Plugin/HTTPStatusRenderer.pm';
 tests 't/*.t';
 author_tests 'xt';
 
+requires 'Mojolicious';
+
 test_requires 'Test::More';
 auto_set_repository;
 WriteAll;
