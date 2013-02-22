@@ -38,8 +38,6 @@ L<Mojoilcious>, L<Mojolicious::Guides>, L<http://mojolicio.us>, L<Mojolicious::P
 
 turugina E<lt>turugina@cpan.orgE<gt>
 
-=head1 SEE ALSO
-
 =head1 LICENSE
 
 This library is free software; you can redistribute it and/or modify
