@@ -66,75 +66,29 @@ my %StatusCode = (
     510 => 'Not Extended',                    # RFC 2774
     511 => 'Network Authentication Required',
 );
+my $template = do {local $/; <DATA>};
 sub register {
   my ($self, $app, $conf) = @_;
 
   return $app->routes->any(
-    '/httpstatus/*code' => {code => 0} => \&_httpstatus);
+    '/httpstatus/*code' => {code => ''} => \&_httpstatus);
 }
 
 sub _httpstatus {
   my $self = shift;
-  my $code = $self->param('code');
-  my $html = <<'EOS';
-<!DOCTYPE html>
-<html>
-<head>
-<meta http_equiv='Content-Type' content='text/html; charset=utf8-8' />
-<script>
-function f(code) {
-  if ( typeof(code) === 'string' && /^\d+$/.test(code) ) {
-    try { code = parseInt(code); }
-    catch (e) { code = null; }
+  my $code = $self->param('code')||$self->req->param('code');
+  if ( defined $code ) {
+    $code =~ s/[^a-zA-Z0-9]+//g;
   }
-  var r = new RegExp(
-    typeof(code) === 'number' && !isNaN(code) ? ('^'+code)
-    : typeof(code) === 'string' ? code.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&")
-    : '.*', 'i')
-  , trs = document.getElementsByTagName('tr');
-  for (var i=0; i<trs.length; ++i) {
-    var tr=trs[i], chld = tr.childNodes
-      , t1 = txt(chld[0])
-      , t2 = txt(chld[1]);
-    tr.style.display = (r.test(t1)||r.test(t2))?'block':'none';
-  }
-}
-function g() { f(ft().value); }
-function h(code) { ft().value=code; f(code); ft().style.display='none';}
-function ft() { return document.getElementById('code'); }
-function txt(e) {
-  return ('textContent' in e) ? e.textContent
-    : ('innerText' in e) ? e.innerText
-    : '';
-}
-</script>
-</head>
-<body
-EOS
-  $html .= $code ? " onload='h($code);'" : "";
-  $html .= <<'EOS';
->
-<input type='text' name='code' id='code' onkeyup='g();'/>
-</form>
-<table>
-<tbody>
-EOS
-  for my $code ( sort keys %StatusCode ) {
-    my $text = $StatusCode{$code};
-    $html .= "<tr><td>$code</td><td>$text</td></tr>";
-  }
-  $html .= <<'EOS';
-</tbody>
-</table>
-</body>
-</html>
-EOS
 
-  $self->render(text => $html, format => 'html');
-}
+  $self->stash(sc => \%StatusCode);
+  $self->stash(pcode => $code // '');
 
+  $self->render(inline => $template, handler => 'ep');
+}
 1;
-__END__
+
+=pod
 
 =head1 NAME
 
@@ -182,3 +136,54 @@ This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
+
+__DATA__
+<!DOCTYPE html>
+<html>
+<head>
+<meta http_equiv='Content-Type' content='text/html; charset=utf8-8' />
+<script>
+function f(code) {
+  if ( typeof(code) === 'string' && /^\d+$/.test(code) ) {
+    try { code = parseInt(code); }
+    catch (e) { code = null; }
+  }
+  var r = new RegExp(
+    typeof(code) === 'number' && !isNaN(code) ? ('^'+code)
+    : typeof(code) === 'string' ? code.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&")
+    : '.*', 'i')
+  , trs = document.getElementsByTagName('tr');
+  for (var i=0; i<trs.length; ++i) {
+    var tr=trs[i], chld = tr.childNodes
+      , t1 = txt(chld[0])
+      , t2 = txt(chld[1]);
+    tr.style.display = (r.test(t1)||r.test(t2))?'block':'none';
+  }
+}
+function g() { f(ft().value); }
+function h() { g(); if (ft().value !== '') {ft().style.display='none';}}
+function ft() { return document.getElementById('code'); }
+function txt(e) {
+  return ('textContent' in e) ? e.textContent
+    : ('innerText' in e) ? e.innerText
+    : '';
+}
+</script>
+</head>
+<body onload='h();'>
+<form method='get'>
+<input type='text' name='code' id='code' onkeyup='g();' 
+value='<%= $pcode %>'
+/>
+</form>
+<table>
+<tbody>
+% my $sc = stash('sc');
+% for my $code ( sort keys %$sc ) {
+%    my $text = $sc->{$code};
+<tr><td><%= $code %></td><td><%= $text %></td></tr>
+%  }
+</tbody>
+</table>
+</body>
+</html>
